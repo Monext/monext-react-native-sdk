@@ -1,0 +1,51 @@
+buildscript {
+  ext.safeExtGet = { prop, fallback ->
+    rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
+  }
+}
+
+plugins {
+  id "com.android.library"
+  id "org.jetbrains.kotlin.android"
+  id "org.jetbrains.kotlin.plugin.compose" version "2.0.21"
+}
+
+apply plugin: "com.facebook.react"
+
+android {
+  namespace "com.monext.reactnative"
+  compileSdkVersion safeExtGet("compileSdkVersion", 36)
+
+  defaultConfig {
+    minSdkVersion safeExtGet("minSdkVersion", 26)
+  }
+
+  buildFeatures {
+    compose true
+  }
+
+  composeOptions {
+    kotlinCompilerExtensionVersion safeExtGet("composeCompilerVersion", "1.5.15")
+  }
+
+  sourceSets {
+    main.java.srcDirs += ["src/main/java"]
+  }
+}
+
+react {
+  jsRootDir = file("../src")
+  libraryName = "RNMonextPaymentSpec"
+  codegenJavaPackageName = "com.monext.reactnative"
+}
+
+dependencies {
+  implementation "com.facebook.react:react-android"
+  implementation "androidx.activity:activity-compose:1.9.3"
+  implementation platform("androidx.compose:compose-bom:2024.10.01")
+  implementation "androidx.compose.runtime:runtime"
+  implementation "androidx.compose.ui:ui"
+  implementation "androidx.compose.material3:material3"
+
+  implementation("com.monext:monext-android-sdk:1.0.6")
+}
