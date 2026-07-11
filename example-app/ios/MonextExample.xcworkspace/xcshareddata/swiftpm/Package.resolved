@@ -1,0 +1,24 @@
+{
+  "originHash" : "c097b6e931485c4166a40eaccff18f630596ef3aec289b2b6cb9e453dec11954",
+  "pins" : [
+    {
+      "identity" : "monext-ios-sdk-spm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Monext/monext-ios-sdk-spm",
+      "state" : {
+        "branch" : "main",
+        "revision" : "7404fe15a7a9f0986f56650c26dbe776ce0f87b7"
+      }
+    },
+    {
+      "identity" : "spm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ios-3ds-sdk/SPM.git",
+      "state" : {
+        "revision" : "53d5820988951162d9172c3ea7b2ea4bac4447b9",
+        "version" : "2.6.0"
+      }
+    }
+  ],
+  "version" : 3
+}

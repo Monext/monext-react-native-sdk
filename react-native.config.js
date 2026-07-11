@@ -1,9 +1,7 @@
 module.exports = {
   dependency: {
     platforms: {
-      ios: {
-        podspecPath: './monext-react-native-sdk.podspec',
-      },
+      ios: {},
       android: {
         sourceDir: './android',
       },
