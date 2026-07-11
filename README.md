@@ -27,7 +27,7 @@ For iOS, the podspec registers the Monext Swift package automatically with React
 https://github.com/Monext/monext-ios-sdk-spm
 ```
 
-Run `pod install` in the host application's `ios` directory. It resolves the `Monext` product at version `1.0.7`, including its 3DS dependency. The SDK requires iOS 16 or later.
+Run `pod install` in the host application's `ios` directory. It resolves the `Monext` product at version `1.0.7-1` (the package release tag for SDK 1.0.7), including its 3DS dependency. The SDK requires iOS 16 or later.
 
 The iOS bridge supports `environment`, `config.language`, `applePayConfiguration`, and all React Native `Appearance` fields that exist in the iOS SDK. `pendingColor` is Android-only; SwiftUI image fields are not serializable from JavaScript.
 

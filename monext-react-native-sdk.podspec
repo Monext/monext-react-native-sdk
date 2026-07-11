@@ -19,7 +19,7 @@ Pod::Spec.new do |s|
   spm_dependency(
     s,
     url: 'https://github.com/Monext/monext-ios-sdk-spm',
-    requirement: { kind: 'exactVersion', version: '1.0.7' },
+    requirement: { kind: 'exactVersion', version: '1.0.7-1' },
     products: ['Monext']
   )
 end

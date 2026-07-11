@@ -21,10 +21,10 @@ function App(): React.JSX.Element {
       const paymentResult = await presentPaymentSheet(sessionToken.trim(), {
           environment: 'sandbox',
           appearance: {
-              primaryColor: "blue",
-              secondaryColor: "blue",
-              confirmationColor: "blue",
-              errorColor: "red",
+              primaryColor: "#0000ff",
+              secondaryColor: "#0000ff",
+              confirmationColor: "#0000ff",
+              errorColor: "#ff0000",
           }
       });
 
