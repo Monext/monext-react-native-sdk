@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.monext.sdk.MnxtSDKContext
 
 class MonextPaymentActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -24,6 +25,17 @@ class MonextPaymentActivity : ComponentActivity() {
     }
 
     val contextBundle = intent.getBundleExtra(MonextPaymentModule.EXTRA_CONTEXT)
+    val sdkContext = try {
+      MnxtSDKContext(
+        environment = parseEnvironment(contextBundle),
+        config = parseConfig(contextBundle),
+        appearance = parseAppearance(contextBundle),
+        googlePayConfiguration = parseGooglePayConfiguration(contextBundle)
+      )
+    } catch (e: Exception) {
+      finishWithError("Invalid payment context: ${e.message}")
+      return
+    }
 
     setContent {
       var showPaymentSheet by rememberSaveable { mutableStateOf(true) }
@@ -32,7 +44,7 @@ class MonextPaymentActivity : ComponentActivity() {
         MonextNativePaymentSheet(
           showPaymentSheet = showPaymentSheet,
           sessionToken = sessionToken,
-          contextBundle = contextBundle,
+          sdkContext = sdkContext,
           onResult = { result ->
             showPaymentSheet = false
             finishWithResult(result)

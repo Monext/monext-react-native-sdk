@@ -3,6 +3,7 @@ package com.monext.reactnative
 import android.app.Activity
 import android.content.Intent
 import com.facebook.react.bridge.ActivityEventListener
+import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.BaseActivityEventListener
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -14,6 +15,7 @@ import com.facebook.react.module.annotations.ReactModule
 class MonextPaymentModule(
   private val reactContext: ReactApplicationContext
 ) : NativeMonextPaymentSpec(reactContext) {
+  @Volatile
   private var pendingPromise: Promise? = null
 
   private val activityEventListener: ActivityEventListener = object : BaseActivityEventListener() {
@@ -33,14 +35,15 @@ class MonextPaymentModule(
       if (resultCode == Activity.RESULT_CANCELED) {
         promise.resolve(
           WritableNativeMap().apply {
-            putString("status", "cancelled")
+            putString("result", "dismissed")
+            putString("state", "paymentCanceled")
           }
         )
         return
       }
 
       if (resultCode != Activity.RESULT_OK) {
-        promise.reject("E_PAYMENT_SHEET", data?.getStringExtra(EXTRA_ERROR) ?: "Payment sheet failed")
+        promise.reject(MonextErrorCodes.PAYMENT_SHEET, data?.getStringExtra(EXTRA_ERROR) ?: "Payment sheet failed")
         return
       }
 
@@ -61,22 +64,35 @@ class MonextPaymentModule(
 
   override fun presentPaymentSheet(sessionToken: String, context: ReadableMap, promise: Promise) {
     if (pendingPromise != null) {
-      promise.reject("E_PAYMENT_IN_PROGRESS", "A Monext payment sheet is already open")
+      promise.reject(MonextErrorCodes.PAYMENT_IN_PROGRESS, "A Monext payment sheet is already open")
       return
     }
 
     val activity = currentActivity
     if (activity == null) {
-      promise.reject("E_NO_ACTIVITY", "No Android Activity is available")
+      promise.reject(MonextErrorCodes.NO_ACTIVITY, "No Android Activity is available")
       return
     }
 
-    if (sessionToken.isNullOrBlank()) {
-      promise.reject("E_INVALID_SESSION_TOKEN", "sessionToken is required")
+    if (sessionToken.isBlank()) {
+      promise.reject(MonextErrorCodes.INVALID_SESSION_TOKEN, "sessionToken is required")
       return
     }
 
-    val contextBundle = context?.let { com.facebook.react.bridge.Arguments.toBundle(it) }
+    val environmentValue = if (context.hasKey(MonextBundleKeys.ENVIRONMENT)) {
+      context.getString(MonextBundleKeys.ENVIRONMENT)
+    } else {
+      null
+    }
+    if (!isValidEnvironment(environmentValue)) {
+      promise.reject(
+        MonextErrorCodes.INVALID_ENVIRONMENT,
+        "environment must be \"production\" or \"sandbox\", got \"$environmentValue\""
+      )
+      return
+    }
+
+    val contextBundle = Arguments.toBundle(context)
     pendingPromise = promise
 
     val intent = Intent(activity, MonextPaymentActivity::class.java).apply {
@@ -85,14 +101,6 @@ class MonextPaymentModule(
     }
 
     activity.startActivityForResult(intent, REQUEST_PAYMENT_SHEET)
-  }
-
-  private fun ReadableMap?.getOptionalString(key: String): String? {
-    if (this == null || !hasKey(key) || isNull(key)) {
-      return null
-    }
-
-    return getString(key)
   }
 
   companion object {

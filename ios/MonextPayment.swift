@@ -17,18 +17,28 @@ final class MonextPayment: NSObject {
         reject: @escaping RCTPromiseRejectBlock
     ) {
         guard !sessionToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            reject("E_INVALID_SESSION_TOKEN", "sessionToken is required", nil)
+            reject(MonextErrorCodes.invalidSessionToken, "sessionToken is required", nil)
             return
         }
-        
+
+        let environmentValue = context[MonextContextKeys.environment] as? String
+        guard isValidEnvironmentValue(environmentValue) else {
+            reject(
+                MonextErrorCodes.invalidEnvironment,
+                "environment must be \"production\" or \"sandbox\", got \"\(environmentValue ?? "nil")\"",
+                nil
+            )
+            return
+        }
+
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             guard !self.isPresenting else {
-                reject("E_PAYMENT_IN_PROGRESS", "A Monext payment sheet is already open", nil)
+                reject(MonextErrorCodes.paymentInProgress, "A Monext payment sheet is already open", nil)
                 return
             }
             guard let presenter = Self.topViewController() else {
-                reject("E_NO_VIEW_CONTROLLER", "No iOS view controller is available", nil)
+                reject(MonextErrorCodes.noViewController, "No iOS view controller is available", nil)
                 return
             }
             
@@ -75,27 +85,27 @@ private final class PaymentSheetCompletion {
     private let resolve: ([String: String]) -> Void
     private var didComplete = false
     private var hasFinishedPresenting = false
-    private var pendingResult: [String: String]?
-    
+    private var queuedResult: [String: String]?
+
     init(resolve: @escaping ([String: String]) -> Void) {
         self.resolve = resolve
     }
-    
+
     func markPresented() {
         hasFinishedPresenting = true
-        if let pending = pendingResult {
-            pendingResult = nil
+        if let pending = queuedResult {
+            queuedResult = nil
             complete(pending)
         }
     }
-    
+
     func complete(_ result: [String: String]) {
         guard !didComplete else { return }
-        
+
         guard hasFinishedPresenting else {
-            // Un résultat est arrivé avant que le present() ait fini sa transition.
-            // On le met en attente pour éviter la course present/dismiss.
-            pendingResult = result
+            // A result arrived before present() finished its transition.
+            // Queue it to avoid a present/dismiss race.
+            queuedResult = result
             return
         }
         didComplete = true
@@ -114,23 +124,31 @@ private struct PaymentContext {
     let applePayButtonStyle: String?
     
     init(dictionary: NSDictionary) {
-        environment = dictionary["environment"] as? String ?? "sandbox"
-        let config = dictionary["config"] as? NSDictionary
-        language = config?["language"] as? String
-        appearance = dictionary["appearance"] as? NSDictionary
-        let applePay = dictionary["applePayConfiguration"] as? NSDictionary
-        applePayButtonLabel = applePay?["buttonLabel"] as? String
-        applePayButtonStyle = applePay?["buttonStyle"] as? String
+        environment = dictionary[MonextContextKeys.environment] as? String ?? "sandbox"
+        let config = dictionary[MonextContextKeys.config] as? NSDictionary
+        language = config?[MonextContextKeys.language] as? String
+        appearance = dictionary[MonextContextKeys.appearance] as? NSDictionary
+        let applePay = dictionary[MonextContextKeys.applePayConfiguration] as? NSDictionary
+        applePayButtonLabel = applePay?[MonextContextKeys.applePayButtonLabel] as? String
+        applePayButtonStyle = applePay?[MonextContextKeys.applePayButtonStyle] as? String
     }
-    
+
     func color(_ key: String) -> Color? {
         Color(hex: appearance?[key] as? String)
     }
-    
+
+    func color(_ key: String, default fallback: Color) -> Color {
+        color(key) ?? fallback
+    }
+
     func number(_ key: String) -> CGFloat? {
         (appearance?[key] as? NSNumber).map { CGFloat($0.doubleValue) }
     }
-    
+
+    func number(_ key: String, default fallback: CGFloat) -> CGFloat {
+        number(key) ?? fallback
+    }
+
     func string(_ key: String) -> String? {
         appearance?[key] as? String
     }
@@ -142,39 +160,39 @@ private struct MonextPaymentSheetView: View {
     let onResult: ([String: String]) -> Void
     
     @State private var isPresented = true
-    @State private var pendingResult: [String: String]?
-    
+    @State private var pendingDismissResult: [String: String]?
+
     var body: some View {
         let appearance: Appearance = Appearance(
-            primaryColor: context.color("primaryColor") ?? Appearance.Defaults.primaryColor,
-            onPrimaryColor: context.color("onPrimaryColor") ?? Appearance.Defaults.onPrimaryColor,
-            secondaryColor: context.color("secondaryColor") ?? Appearance.Defaults.secondaryColor,
-            onSecondaryColor: context.color("onSecondaryColor") ?? Appearance.Defaults.onSecondaryColor,
-            backgroundColor: context.color("backgroundColor") ?? Appearance.Defaults.backgroundColor,
-            onBackgroundColor: context.color("onBackgroundColor") ?? Appearance.Defaults.onBackgroundColor,
-            surfaceColor: context.color("surfaceColor") ?? Appearance.Defaults.surfaceColor,
-            onSurfaceColor: context.color("onSurfaceColor") ?? Appearance.Defaults.onSurfaceColor,
-            confirmationColor: context.color("confirmationColor") ?? Appearance.Defaults.confirmationColor,
-            onConfirmationColor: context.color("onConfirmationColor") ?? Appearance.Defaults.onConfirmationColor,
-            errorColor: context.color("errorColor") ?? Appearance.Defaults.errorColor,
-            textfieldLabelColor: context.color("textfieldLabelColor"),
-            textfieldTextColor: context.color("textfieldTextColor"),
-            textfieldBorderColor: context.color("textfieldBorderColor"),
-            textfieldBorderSelectedColor: context.color("textfieldBorderSelectedColor"),
-            textfieldBackgroundColor: context.color("textfieldBackgroundColor"),
-            textfieldAccessoryColor: context.color("textfieldAccessoryColor"),
-            buttonRadius: context.number("buttonRadius") ?? Appearance.Defaults.buttonRadius,
-            cardRadius: context.number("cardRadius") ?? Appearance.Defaults.cardRadius,
-            textfieldRadius: context.number("textfieldRadius") ?? Appearance.Defaults.textfieldRadius,
-            textfieldStroke: context.number("textfieldStroke") ?? Appearance.Defaults.textfieldStroke,
-            textfieldStrokeSelected: context.number("textfieldStrokeSelected") ?? Appearance.Defaults.textfieldStrokeSelected,
-            paymentMethodShape: paymentMethodShape(context.string("paymentMethodShape")),
-            headerTitle: context.string("headerTitle"),
-            headerBackgroundColor: context.color("headerBackgroundColor") ?? Appearance.Defaults.headerBackgroundColor,
-            onHeaderBackgroundColor: context.color("onHeaderBackgroundColor") ?? Appearance.Defaults.onHeaderBackgroundColor,
-            backButtonText: context.string("backButtonText")
+            primaryColor: context.color(MonextContextKeys.primaryColor, default: Appearance.Defaults.primaryColor),
+            onPrimaryColor: context.color(MonextContextKeys.onPrimaryColor, default: Appearance.Defaults.onPrimaryColor),
+            secondaryColor: context.color(MonextContextKeys.secondaryColor, default: Appearance.Defaults.secondaryColor),
+            onSecondaryColor: context.color(MonextContextKeys.onSecondaryColor, default: Appearance.Defaults.onSecondaryColor),
+            backgroundColor: context.color(MonextContextKeys.backgroundColor, default: Appearance.Defaults.backgroundColor),
+            onBackgroundColor: context.color(MonextContextKeys.onBackgroundColor, default: Appearance.Defaults.onBackgroundColor),
+            surfaceColor: context.color(MonextContextKeys.surfaceColor, default: Appearance.Defaults.surfaceColor),
+            onSurfaceColor: context.color(MonextContextKeys.onSurfaceColor, default: Appearance.Defaults.onSurfaceColor),
+            confirmationColor: context.color(MonextContextKeys.confirmationColor, default: Appearance.Defaults.confirmationColor),
+            onConfirmationColor: context.color(MonextContextKeys.onConfirmationColor, default: Appearance.Defaults.onConfirmationColor),
+            errorColor: context.color(MonextContextKeys.errorColor, default: Appearance.Defaults.errorColor),
+            textfieldLabelColor: context.color(MonextContextKeys.textfieldLabelColor),
+            textfieldTextColor: context.color(MonextContextKeys.textfieldTextColor),
+            textfieldBorderColor: context.color(MonextContextKeys.textfieldBorderColor),
+            textfieldBorderSelectedColor: context.color(MonextContextKeys.textfieldBorderSelectedColor),
+            textfieldBackgroundColor: context.color(MonextContextKeys.textfieldBackgroundColor),
+            textfieldAccessoryColor: context.color(MonextContextKeys.textfieldAccessoryColor),
+            buttonRadius: context.number(MonextContextKeys.buttonRadius, default: Appearance.Defaults.buttonRadius),
+            cardRadius: context.number(MonextContextKeys.cardRadius, default: Appearance.Defaults.cardRadius),
+            textfieldRadius: context.number(MonextContextKeys.textfieldRadius, default: Appearance.Defaults.textfieldRadius),
+            textfieldStroke: context.number(MonextContextKeys.textfieldStroke, default: Appearance.Defaults.textfieldStroke),
+            textfieldStrokeSelected: context.number(MonextContextKeys.textfieldStrokeSelected, default: Appearance.Defaults.textfieldStrokeSelected),
+            paymentMethodShape: paymentMethodShape(from: context.string(MonextContextKeys.paymentMethodShape)),
+            headerTitle: context.string(MonextContextKeys.headerTitle),
+            headerBackgroundColor: context.color(MonextContextKeys.headerBackgroundColor, default: Appearance.Defaults.headerBackgroundColor),
+            onHeaderBackgroundColor: context.color(MonextContextKeys.onHeaderBackgroundColor, default: Appearance.Defaults.onHeaderBackgroundColor),
+            backButtonText: context.string(MonextContextKeys.backButtonText)
         )
-        
+
         Color.clear
             .presentPaymentSheet(
                 isPresented: $isPresented,
@@ -184,53 +202,31 @@ private struct MonextPaymentSheetView: View {
                     config: MnxtSDKConfiguration(language: context.language ?? "FR"),
                     appearance: appearance,
                     applePayConfiguration: ApplePayConfiguration(
-                        buttonLabel: applePayButtonLabel(context.applePayButtonLabel),
-                        buttonStyle: applePayButtonStyle(context.applePayButtonStyle)
+                        buttonLabel: applePayButtonLabel(from: context.applePayButtonLabel),
+                        buttonStyle: applePayButtonStyle(from: context.applePayButtonStyle)
                     )
                 ),
                 onResult: { result in
-                    pendingResult = mapResult(result)
+                    pendingDismissResult = mapResult(result)
                 }
             )
             .onChange(of: isPresented) { presented in
                 guard !presented else { return }
-                let result = pendingResult
-                pendingResult = nil
-                onResult(result ?? ["result": "dismissed", "state": "paymentCanceled"])
+                let result = pendingDismissResult
+                pendingDismissResult = nil
+                onResult(result ?? Self.dismissedByUserResult)
             }
     }
-    
+
+    private static let dismissedByUserResult = ["result": "dismissed", "state": "paymentCanceled"]
+
     private func mapResult(_ result: PaymentSheetResult) -> [String: String] {
         switch result {
         case .tokenExpired: return ["result": "completed", "state": "tokenExpired"]
         case .paymentPending: return ["result": "completed", "state": "paymentPending"]
         case .paymentSuccess: return ["result": "completed", "state": "paymentSuccess"]
         case .paymentFailure: return ["result": "completed", "state": "paymentFailure"]
-        case .paymentCanceled: return ["result": "dismissed", "state": "paymentCanceled"]
-        }
-    }
-    
-    private func applePayButtonLabel(_ value: String?) -> PayWithApplePayButtonLabel {
-        switch value?.lowercased() {
-        case "buy": return .buy
-        case "book": return .book
-        case "checkout": return .checkout
-        case "donate": return .donate
-        case "subscribe": return .subscribe
-        case "set_up", "setup": return .setUp
-        default: return .plain
-        }
-    }
-    
-    private func paymentMethodShape(_ value: String?) -> Appearance.PaymentMethodShape {
-        value?.lowercased() == "square" ? .square : .round
-    }
-    
-    private func applePayButtonStyle(_ value: String?) -> PayWithApplePayButtonStyle {
-        switch value?.lowercased() {
-        case "white": return .white
-        case "whiteoutline", "white_outline": return .whiteOutline
-        default: return .black
+        case .paymentCanceled: return Self.dismissedByUserResult
         }
     }
 }

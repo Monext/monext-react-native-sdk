@@ -29,7 +29,8 @@ export type Appearance = {
   textfieldRadius?: number;
   textfieldStroke?: number;
   textfieldStrokeSelected?: number;
-  paymentMethodShape?: string; // "ROUND" | "SQUARE"
+  // Accepted values (case-insensitive): "round" | "square". Any other value falls back to "round".
+  paymentMethodShape?: string;
   headerTitle?: string;
   headerBackgroundColor?: string;
   onHeaderBackgroundColor?: string;
@@ -37,17 +38,26 @@ export type Appearance = {
 };
 
 export type GooglePayConfiguration = {
-  theme?: string; // e.g. "Dark", "Light"
-  type?: string;  // e.g. "Plain", "Buy"
+  // Accepted values (case-insensitive): "light" | "dark". Any other value falls back to "dark".
+  theme?: string;
+  // Accepted values (case-insensitive): "buy" | "donate" | "book" | "checkout" | "order" | "subscribe" | "pay".
+  // Any other value falls back to "plain".
+  type?: string;
 };
 
 export type ApplePayConfiguration = {
-  buttonLabel?: string; // e.g. "plain", "buy", "checkout"
-  buttonStyle?: string; // "black" | "white" | "whiteOutline"
+  // Accepted values (case-insensitive, "_" ignored): "buy" | "book" | "checkout" | "donate" | "subscribe" | "setup".
+  // Any other value falls back to "plain".
+  buttonLabel?: string;
+  // Accepted values (case-insensitive, "_" ignored): "black" | "white" | "whiteoutline".
+  // Any other value falls back to "black".
+  buttonStyle?: string;
 };
 
 export type MnxtSDKContext = {
-  environment: string;
+  // "production" or "sandbox" (case-insensitive). Rejects the promise with E_INVALID_ENVIRONMENT
+  // if present but not one of these two values.
+  environment: 'production' | 'sandbox';
   config?: MnxtSDKConfiguration;
   appearance?: Appearance;
   googlePayConfiguration?: GooglePayConfiguration;
