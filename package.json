@@ -9,6 +9,8 @@
   "source": "src/index.ts",
   "files": [
     "android",
+    "!android/build/**",
+    "!android/local.properties",
     "ios",
     "monext-react-native-sdk.podspec",
     "src",
@@ -39,6 +41,7 @@
     "@react-native-community/cli": "^20.2.0",
     "@react-native-community/cli-platform-android": "^20.2.0",
     "@react-native/metro-config": "^0.86.0",
+    "@types/react": "^19.2.7",
     "react": "^19.2.7",
     "react-native": "^0.86.0",
     "react-native-builder-bob": "^0.43.0",

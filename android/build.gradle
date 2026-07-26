@@ -31,6 +31,18 @@ android {
   sourceSets {
     main.java.srcDirs += ["src/main/java"]
   }
+
+  testOptions {
+    unitTests.all {
+      useJUnitPlatform()
+    }
+  }
+}
+
+tasks.withType(Test).configureEach {
+  javaLauncher = javaToolchains.launcherFor {
+    languageVersion = JavaLanguageVersion.of(21)
+  }
 }
 
 react {
@@ -48,4 +60,9 @@ dependencies {
   implementation "androidx.compose.material3:material3"
 
   implementation("com.monext:monext-android-sdk:1.0.6")
+
+  testImplementation platform("org.junit:junit-bom:5.12.2")
+  testImplementation "org.junit.jupiter:junit-jupiter"
+  testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+  testImplementation "org.mockito:mockito-core:5.18.0"
 }

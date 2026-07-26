@@ -7,6 +7,9 @@ import NativeMonextPayment, {
   type ApplePayConfiguration,
 } from './NativeMonextPayment';
 
+export { PaymentButton } from './PaymentButton';
+export type { PaymentButtonProps } from './PaymentButton';
+
 export type {
   PaymentSheetResult,
   MnxtSDKContext,
