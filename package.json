@@ -1,6 +1,6 @@
 {
   "name": "monext-react-native-sdk",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "React Native wrapper for the Monext iOS and Android payment sheets.",
   "main": "lib/commonjs/index.js",
   "module": "lib/module/index.js",

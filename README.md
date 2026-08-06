@@ -26,34 +26,8 @@ npm install monext-react-native-sdk
 
 Enable the New Architecture in the host React Native app because this module is implemented as a TurboModule.
 
-## Native SDK dependencies
 
-### Android
-
-Add the Monext Android SDK dependency to the host app or expose it to this library with Gradle:
-
-```properties
-# android/gradle.properties in the host app
-MonextSdkDependency=com.monext:payment-sheet:<version>
-```
-
-If the SDK uses a private Maven repository, add that repository in the host app's `android/build.gradle` or `settings.gradle`. The Android SDK requires Android 8.0 (API 26) or later.
-
-Google Pay support is exposed through `googlePayConfiguration`, but the native Android SDK does not yet document merchant/API enablement steps for it — check with Monext for current setup requirements before relying on it in production.
-
-### iOS
-
-The podspec registers the Monext Swift package automatically with React Native's SPM integration:
-
-```
-https://github.com/Monext/monext-ios-sdk-spm
-```
-
-Run `pod install` in the host application's `ios` directory. It resolves the `Monext` product at version `1.0.7-1` (the package release tag for SDK 1.0.7), including its 3DS dependency. The SDK requires iOS 16 or later.
-
-The iOS bridge supports `environment`, `config.language`, `applePayConfiguration`, and all `Appearance` fields that exist in the iOS SDK. `pendingColor` is Android-only; SwiftUI image-typed appearance fields are not serializable from JavaScript, so they have no JS-facing equivalent.
-
-#### Apple Pay setup (optional)
+### Apple Pay setup (optional)
 
 To offer Apple Pay through `applePayConfiguration`, configure it once in the host app before it can be used:
 

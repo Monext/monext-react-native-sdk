@@ -226,6 +226,7 @@ private struct MonextPaymentSheetView: View {
         case .paymentPending: return ["result": "completed", "state": "paymentPending"]
         case .paymentSuccess: return ["result": "completed", "state": "paymentSuccess"]
         case .paymentFailure: return ["result": "completed", "state": "paymentFailure"]
+        case .paymentSheetDismissedByUser: return ["result": "dismissed", "state": "paymentSheetDismissedByUser"]
         case .paymentCanceled: return Self.dismissedByUserResult
         }
     }
