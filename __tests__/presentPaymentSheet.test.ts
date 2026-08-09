@@ -9,6 +9,7 @@ jest.mock('../src/NativeMonextPayment', () => ({
 
 import { presentPaymentSheet } from '../src/index';
 import NativeMonextPayment from '../src/NativeMonextPayment';
+import { MonextError } from '../src/MonextError';
 
 const mockPresentPaymentSheet =
   NativeMonextPayment.presentPaymentSheet as jest.Mock;
@@ -39,6 +40,46 @@ describe('presentPaymentSheet validation', () => {
 
     expect(mockPresentPaymentSheet).not.toHaveBeenCalled();
   });
+
+  it('rejects a whitespace-only sessionToken with a stable code, without calling native', async () => {
+    const error = await presentPaymentSheet('   ', context).catch((e) => e);
+
+    expect(error).toBeInstanceOf(MonextError);
+    expect(error.code).toBe('E_INVALID_SESSION_TOKEN');
+    expect(error.message).toBe('sessionToken is required');
+    expect(mockPresentPaymentSheet).not.toHaveBeenCalled();
+  });
+
+  it('trims the sessionToken before delegating to native', async () => {
+    mockPresentPaymentSheet.mockResolvedValue({ result: 'completed' });
+
+    await presentPaymentSheet('  token-123  ', context);
+
+    expect(mockPresentPaymentSheet).toHaveBeenCalledWith('token-123', context);
+  });
+
+  it.each([undefined, '', 'prod'])(
+    'rejects an invalid environment (%p) with a stable code, without calling native',
+    async (environment) => {
+      const invalidContext = { environment } as unknown as MnxtSDKContext;
+      const error = await presentPaymentSheet('token-123', invalidContext).catch((e) => e);
+
+      expect(error).toBeInstanceOf(MonextError);
+      expect(error.code).toBe('E_INVALID_ENVIRONMENT');
+      expect(mockPresentPaymentSheet).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(['production', 'SANDBOX', 'Production'])(
+    'accepts a case-insensitive valid environment (%p) and delegates to native',
+    async (environment) => {
+      mockPresentPaymentSheet.mockResolvedValue({ result: 'completed' });
+
+      await presentPaymentSheet('token-123', { environment } as MnxtSDKContext);
+
+      expect(mockPresentPaymentSheet).toHaveBeenCalledWith('token-123', { environment });
+    }
+  );
 });
 
 describe('presentPaymentSheet delegation', () => {

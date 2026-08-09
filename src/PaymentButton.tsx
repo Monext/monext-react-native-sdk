@@ -1,10 +1,8 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { Pressable } from 'react-native';
 import type { PressableProps } from 'react-native';
-import NativeMonextPayment, {
-  type MnxtSDKContext,
-  type PaymentSheetResult,
-} from './NativeMonextPayment';
+import type { MnxtSDKContext, PaymentSheetResult } from './NativeMonextPayment';
+import { presentPaymentSheet } from './presentPaymentSheet';
 
 export type PaymentButtonRenderProps = {
   disabled: boolean;
@@ -104,7 +102,7 @@ export function PaymentButton({
     isPresentingRef.current = true;
     setIsPresenting(true);
 
-    NativeMonextPayment.presentPaymentSheet(sessionToken, context)
+    presentPaymentSheet(sessionToken, context)
       .then(onResult)
       .catch((error: unknown) => {
         if (onError) {

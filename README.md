@@ -97,7 +97,7 @@ presentPaymentSheet(sessionToken: string, context: MnxtSDKContext): Promise<Paym
 
 Presents the native payment sheet full-screen (a dedicated Activity on Android, a modal `UIHostingController` on iOS) and resolves once the user completes, cancels, or the native SDK returns an error. Only one payment sheet can be presented at a time; calling this again while one is already open rejects with `E_PAYMENT_IN_PROGRESS`.
 
-Throws synchronously (rejected Promise) if `sessionToken` is empty.
+Before calling native, `presentPaymentSheet` validates `sessionToken` (trimmed, must be non-empty) and `context.environment` (must be `'production'`/`'sandbox'`, case-insensitive) itself and rejects with a `MonextError` — see [Errors](#errors) — without a native round-trip if either is invalid.
 
 ### `PaymentButton`
 
@@ -228,15 +228,30 @@ All types are re-exported from the package entry point alongside `presentPayment
 
 ## Errors
 
-`presentPaymentSheet` rejects the returned Promise (instead of resolving) for programmer errors and unrecoverable native failures. The rejection's `code` is one of:
+`presentPaymentSheet` rejects the returned Promise (instead of resolving) for programmer errors and unrecoverable native failures. Every rejection is a `MonextError` (also thrown by `PaymentButton`, which is a thin wrapper around `presentPaymentSheet`) exposing the same `{ code, message }` shape regardless of whether it originated in JS or natively — `code` is one of the exported `MonextErrorCodes`:
 
-| Code | Meaning |
-|---|---|
-| `E_INVALID_SESSION_TOKEN` | `sessionToken` was empty. |
-| `E_INVALID_ENVIRONMENT` | `context.environment` was set but not `'production'`/`'sandbox'`. |
-| `E_PAYMENT_IN_PROGRESS` | A payment sheet is already being presented. |
-| `E_NO_ACTIVITY` (Android) / `E_NO_VIEW_CONTROLLER` (iOS) | No host Activity/view controller was available to present on. |
-| `E_PAYMENT_SHEET` (Android) | The native payment sheet reported an unrecoverable error. |
+| Code | Origin | Meaning |
+|---|---|---|
+| `E_INVALID_SESSION_TOKEN` | JS | `sessionToken` was empty or whitespace-only, checked before any native call. |
+| `E_INVALID_ENVIRONMENT` | JS | `context.environment` was missing or not `'production'`/`'sandbox'` (case-insensitive), checked before any native call. |
+| `E_PAYMENT_IN_PROGRESS` | Native (Android + iOS) | A payment sheet is already being presented. |
+| `E_NO_ACTIVITY` | Native (Android only) | No host Activity was available to present on. |
+| `E_NO_VIEW_CONTROLLER` | Native (iOS only) | No view controller was available to present on. |
+| `E_PAYMENT_SHEET` | Native (Android only) | The native payment sheet reported an unrecoverable error. **iOS has no equivalent path today**: a failing iOS payment resolves the Promise with `result: 'completed', state: 'paymentFailure'` instead of rejecting. |
+
+Import `MonextErrorCodes` for typed comparisons instead of hardcoding strings:
+
+```ts
+import { presentPaymentSheet, MonextErrorCodes } from 'monext-react-native-sdk';
+
+try {
+  await presentPaymentSheet(sessionToken, context);
+} catch (error) {
+  if (error instanceof Error && 'code' in error && error.code === MonextErrorCodes.PAYMENT_IN_PROGRESS) {
+    // ...
+  }
+}
+```
 
 ## Platform notes
 
