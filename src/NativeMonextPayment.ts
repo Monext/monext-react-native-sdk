@@ -5,6 +5,8 @@ export type MnxtSDKConfiguration = {
   language?: string;
 };
 
+export type PaymentMethodShape = 'round' | 'square';
+
 export type Appearance = {
   primaryColor?: string;
   onPrimaryColor?: string;
@@ -30,33 +32,60 @@ export type Appearance = {
   textfieldStroke?: number;
   textfieldStrokeSelected?: number;
   // Accepted values (case-insensitive): "round" | "square". Any other value falls back to "round".
-  paymentMethodShape?: string;
+  paymentMethodShape?: PaymentMethodShape;
   headerTitle?: string;
   headerBackgroundColor?: string;
   onHeaderBackgroundColor?: string;
   backButtonText?: string;
 };
 
+export type GooglePayTheme = 'light' | 'dark';
+
+export type GooglePayButtonType =
+  | 'buy'
+  | 'donate'
+  | 'book'
+  | 'checkout'
+  | 'order'
+  | 'subscribe'
+  | 'pay'
+  | 'plain';
+
 export type GooglePayConfiguration = {
   // Accepted values (case-insensitive): "light" | "dark". Any other value falls back to "dark".
-  theme?: string;
+  theme?: GooglePayTheme;
   // Accepted values (case-insensitive): "buy" | "donate" | "book" | "checkout" | "order" | "subscribe" | "pay".
   // Any other value falls back to "plain".
-  type?: string;
+  type?: GooglePayButtonType;
 };
+
+export type ApplePayButtonLabel =
+  | 'buy'
+  | 'book'
+  | 'checkout'
+  | 'donate'
+  | 'subscribe'
+  | 'setup'
+  | 'plain';
+
+export type ApplePayButtonStyle =
+  | 'black'
+  | 'white'
+  | 'whiteOutline'
+  | 'whiteoutline';
 
 export type ApplePayConfiguration = {
   // Accepted values (case-insensitive, "_" ignored): "buy" | "book" | "checkout" | "donate" | "subscribe" | "setup".
   // Any other value falls back to "plain".
-  buttonLabel?: string;
+  buttonLabel?: ApplePayButtonLabel;
   // Accepted values (case-insensitive, "_" ignored): "black" | "white" | "whiteoutline".
   // Any other value falls back to "black".
-  buttonStyle?: string;
+  buttonStyle?: ApplePayButtonStyle;
 };
 
 export type MnxtSDKContext = {
-  // "production" or "sandbox" (case-insensitive). Rejects the promise with E_INVALID_ENVIRONMENT
-  // if present but not one of these two values.
+  // "production" or "sandbox" (case-insensitive). Required — rejects the promise with
+  // E_INVALID_ENVIRONMENT if missing or not one of these two values.
   environment: 'production' | 'sandbox';
   config?: MnxtSDKConfiguration;
   appearance?: Appearance;
@@ -64,9 +93,18 @@ export type MnxtSDKContext = {
   applePayConfiguration?: ApplePayConfiguration;
 };
 
+export type PaymentSheetState =
+  | 'paymentSuccess'
+  | 'paymentFailure'
+  | 'paymentPending'
+  | 'tokenExpired'
+  | 'paymentCanceled'
+  | 'paymentSheetDismissedByUser'
+  | 'paymentIncomplete';
+
 export type PaymentSheetResult = {
   result: 'completed' | 'dismissed';
-  state?: string;
+  state?: PaymentSheetState;
 };
 
 export interface Spec extends TurboModule {

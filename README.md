@@ -76,9 +76,14 @@ import { PaymentButton } from 'monext-react-native-sdk';
       // payment completed
     }
   }}
-  onError={(error) => console.error(error)}
+  onError={(error) => {
+    // Strongly recommended: handle presentation errors gracefully
+    console.error('Payment sheet failed:', error);
+  }}
 >
-  <Text>Checkout</Text>
+  {({ isPresenting }) => (
+    <Text>{isPresenting ? 'Processing...' : 'Checkout'}</Text>
+  )}
 </PaymentButton>;
 ```
 
@@ -105,8 +110,9 @@ Throws synchronously (rejected Promise) if `sessionToken` is empty.
   style={pressableStyle}
   disabled={boolean}
   testID={string}
+  accessibilityLabel={string}
 >
-  {content}
+  {({ disabled, isPresenting }) => content}
 </PaymentButton>
 ```
 
@@ -115,13 +121,17 @@ Throws synchronously (rejected Promise) if `sessionToken` is empty.
 | `sessionToken` | `string` | no | The button is inactive (tap is a no-op) while empty/unset. |
 | `context` | `MnxtSDKContext` | yes | |
 | `onResult` | `(result: PaymentSheetResult) => void` | yes | Called when the sheet resolves (completed or dismissed). |
-| `onError` | `(error: unknown) => void` | no | Called if `presentPaymentSheet` rejects. If omitted, the error is logged with `console.error`. |
-| `children` | `React.ReactNode` | yes | The button's content. |
+| `onError` | `(error: unknown) => void` | no | Called if `presentPaymentSheet` rejects. **Strongly recommended** in production to avoid silent failure handling (defaults to `console.error`). |
+| `children` | `ReactNode \| (state: PaymentButtonRenderProps) => ReactNode` | yes | The button's content or a render prop `({ disabled, isPresenting }) => ReactNode` for loading/disabled UX. |
 | `style` | `PressableProps['style']` | no | Forwarded to the underlying `Pressable`. |
 | `disabled` | `boolean` | no | Forces the button inactive in addition to the `sessionToken` check. |
 | `testID` | `string` | no | Forwarded to the underlying `Pressable`. |
+| `accessibilityRole` | `AccessibilityRole` | no | Defaults to `'button'`. |
+| `accessibilityState` | `AccessibilityState` | no | Merged with `{ disabled, busy: isPresenting }`. |
+| `accessibilityLabel` | `string` | no | Forwarded to the underlying `Pressable`. |
+| `accessibilityHint` | `string` | no | Forwarded to the underlying `Pressable`. |
 
-While a sheet is being presented, further taps are ignored until it resolves — `presentPaymentSheet` itself rejects with `E_PAYMENT_IN_PROGRESS` for genuinely concurrent calls (e.g. from a second, independent `PaymentButton`).
+While a sheet is being presented, further taps are ignored until it resolves — `presentPaymentSheet` itself rejects with `E_PAYMENT_IN_PROGRESS` for genuinely concurrent calls (e.g. from a second, independent `PaymentButton`). The button updates `accessibilityState={{ disabled: true, busy: true }}` while presenting.
 
 ### `MnxtSDKContext`
 
@@ -163,7 +173,7 @@ All fields are optional; omitted fields fall back to the native SDK's defaults.
 | `textfieldRadius` | `number` | |
 | `textfieldStroke` | `number` | |
 | `textfieldStrokeSelected` | `number` | |
-| `paymentMethodShape` | `string` | `'round'` \| `'square'` (case-insensitive). Any other value falls back to `'round'`. |
+| `paymentMethodShape` | `PaymentMethodShape` (`'round'` \| `'square'`) | Case-insensitive. Any other value falls back to `'round'`. |
 | `headerTitle` | `string` | |
 | `headerBackgroundColor` / `onHeaderBackgroundColor` | `string` | |
 | `backButtonText` | `string` | |
@@ -172,22 +182,47 @@ All fields are optional; omitted fields fall back to the native SDK's defaults.
 
 | Field | Type | Notes |
 |---|---|---|
-| `theme` | `string` | `'light'` \| `'dark'` (case-insensitive). Any other value falls back to `'dark'`. |
-| `type` | `string` | `'buy'` \| `'donate'` \| `'book'` \| `'checkout'` \| `'order'` \| `'subscribe'` \| `'pay'` (case-insensitive). Any other value falls back to `'plain'`. |
+| `theme` | `GooglePayTheme` (`'light'` \| `'dark'`) | Case-insensitive. Any other value falls back to `'dark'`. |
+| `type` | `GooglePayButtonType` (`'buy'` \| `'donate'` \| `'book'` \| `'checkout'` \| `'order'` \| `'subscribe'` \| `'pay'` \| `'plain'`) | Case-insensitive. Any other value falls back to `'plain'`. |
 
 ### `ApplePayConfiguration` (iOS)
 
 | Field | Type | Notes |
 |---|---|---|
-| `buttonLabel` | `string` | `'buy'` \| `'book'` \| `'checkout'` \| `'donate'` \| `'subscribe'` \| `'setup'` (case-insensitive, `'_'` ignored). Any other value falls back to `'plain'`. |
-| `buttonStyle` | `string` | `'black'` \| `'white'` \| `'whiteOutline'` (case-insensitive, `'_'` ignored). Any other value falls back to `'black'`. |
+| `buttonLabel` | `ApplePayButtonLabel` (`'buy'` \| `'book'` \| `'checkout'` \| `'donate'` \| `'subscribe'` \| `'setup'` \| `'plain'`) | Case-insensitive, `'_'` ignored. Any other value falls back to `'plain'`. |
+| `buttonStyle` | `ApplePayButtonStyle` (`'black'` \| `'white'` \| `'whiteOutline'` \| `'whiteoutline'`) | Case-insensitive, `'_'` ignored. Any other value falls back to `'black'`. |
 
 ### `PaymentSheetResult`
 
 | Field | Type | Notes |
 |---|---|---|
 | `result` | `'completed' \| 'dismissed'` | Whether the user completed a flow or dismissed the sheet before finishing. |
-| `state` | `string?` | Native SDK payment state (e.g. `'paymentSuccess'`) when `result` is `'completed'`. |
+| `state` | `PaymentSheetState?` | Native SDK payment state (e.g. `'paymentSuccess'`). |
+
+### `PaymentSheetState`
+
+Canonical union of possible native payment states across Android and iOS:
+
+```ts
+export type PaymentSheetState =
+  | 'paymentSuccess'
+  | 'paymentFailure'
+  | 'paymentPending'
+  | 'tokenExpired'
+  | 'paymentCanceled'
+  | 'paymentSheetDismissedByUser'
+  | 'paymentIncomplete';
+```
+
+| State | Platform | Description |
+|---|---|---|
+| `'paymentSuccess'` | Both | Payment completed successfully. |
+| `'paymentFailure'` | Both | Payment process failed. |
+| `'paymentPending'` | Both | Payment is pending asynchronous confirmation. |
+| `'tokenExpired'` | Both | The payment session token has expired. |
+| `'paymentCanceled'` | Both | Payment was canceled. |
+| `'paymentSheetDismissedByUser'` | iOS | Payment sheet was explicitly dismissed by the user (iOS native event). |
+| `'paymentIncomplete'` | Android | Payment process is incomplete (**Android only**). |
 
 All types are re-exported from the package entry point alongside `presentPaymentSheet`.
 

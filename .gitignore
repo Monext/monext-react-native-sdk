@@ -5,3 +5,5 @@ android/.gradle/
 *.log
 .DS_Store
 .idea/
+local.properties
+

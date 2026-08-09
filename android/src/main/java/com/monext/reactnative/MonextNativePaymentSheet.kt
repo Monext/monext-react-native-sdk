@@ -26,8 +26,8 @@ internal fun MonextNativePaymentSheet(
         sdkContext = sdkContext,
         onResult = { result ->
             val resultObj = when (result) {
-                is PaymentResult.SheetDismissed -> MonextPaymentSheetResult(result = "dismissed", state = result.currentState?.toString())
-                is PaymentResult.PaymentCompleted -> MonextPaymentSheetResult(result = "completed", state = result.finalState?.toString())
+                is PaymentResult.SheetDismissed -> MonextPaymentSheetResult(result = "dismissed", state = mapTransactionState(result.currentState))
+                is PaymentResult.PaymentCompleted -> MonextPaymentSheetResult(result = "completed", state = mapTransactionState(result.finalState))
             }
             onResult(resultObj)
         }

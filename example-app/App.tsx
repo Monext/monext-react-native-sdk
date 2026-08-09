@@ -106,7 +106,11 @@ function App(): React.JSX.Element {
             (!hasSessionToken || pressed) && styles.buttonDisabled,
           ]}
         >
-          <Text style={styles.buttonText}>Checkout</Text>
+          {({ isPresenting }) => (
+            <Text style={styles.buttonText}>
+              {isPresenting ? 'Opening...' : 'Checkout'}
+            </Text>
+          )}
         </PaymentButton>
 
         <Text style={styles.result}>{result}</Text>

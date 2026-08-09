@@ -23,7 +23,6 @@ class MonextPaymentPackage : BaseReactPackage() {
           MonextPaymentModule.NAME,
           false,
           false,
-          true,
           false,
           true
         )

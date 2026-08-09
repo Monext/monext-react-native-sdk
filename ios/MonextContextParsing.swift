@@ -6,7 +6,9 @@ enum MonextErrorCodes {
     static let invalidSessionToken = "E_INVALID_SESSION_TOKEN"
     static let paymentInProgress = "E_PAYMENT_IN_PROGRESS"
     static let noViewController = "E_NO_VIEW_CONTROLLER"
+    static let noActivity = "E_NO_ACTIVITY"
     static let invalidEnvironment = "E_INVALID_ENVIRONMENT"
+    static let paymentSheet = "E_PAYMENT_SHEET"
 }
 
 enum MonextContextKeys {
@@ -48,7 +50,7 @@ enum MonextContextKeys {
 }
 
 func isValidEnvironmentValue(_ value: String?) -> Bool {
-    guard let value else { return true }
+    guard let value else { return false }
     return value.caseInsensitiveCompare("production") == .orderedSame
         || value.caseInsensitiveCompare("sandbox") == .orderedSame
 }

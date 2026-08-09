@@ -85,10 +85,12 @@ class MonextPaymentModule(
       null
     }
     if (!isValidEnvironment(environmentValue)) {
-      promise.reject(
-        MonextErrorCodes.INVALID_ENVIRONMENT,
+      val message = if (environmentValue == null) {
+        "environment is required and must be \"production\" or \"sandbox\""
+      } else {
         "environment must be \"production\" or \"sandbox\", got \"$environmentValue\""
-      )
+      }
+      promise.reject(MonextErrorCodes.INVALID_ENVIRONMENT, message)
       return
     }
 
@@ -100,12 +102,20 @@ class MonextPaymentModule(
       putExtra(EXTRA_CONTEXT, contextBundle)
     }
 
-    activity.startActivityForResult(intent, REQUEST_PAYMENT_SHEET)
+    // MonextPaymentActivity is translucent and sits on top of the host activity, so the host
+    // gets paused (and stops recomposing) almost immediately after this call. Deferring the
+    // launch by a couple of frames gives React Native time to paint the caller's "presenting"
+    // state (e.g. a loading label) before the host activity freezes.
+    activity.window.decorView.postDelayed(
+      { activity.startActivityForResult(intent, REQUEST_PAYMENT_SHEET) },
+      ACTIVITY_LAUNCH_DELAY_MS
+    )
   }
 
   companion object {
     const val NAME = "MonextPayment"
     const val REQUEST_PAYMENT_SHEET = 42101
+    private const val ACTIVITY_LAUNCH_DELAY_MS = 32L
     const val EXTRA_SESSION_TOKEN = "com.monext.reactnative.SESSION_TOKEN"
     const val EXTRA_CONTEXT = "com.monext.reactnative.CONTEXT"
     const val EXTRA_RESULT = "com.monext.reactnative.RESULT"

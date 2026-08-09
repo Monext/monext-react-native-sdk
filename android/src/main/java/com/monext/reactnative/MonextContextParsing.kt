@@ -51,9 +51,8 @@ internal object MonextBundleKeys {
 }
 
 internal fun isValidEnvironment(value: String?): Boolean {
-    return value == null ||
-        value.equals("production", ignoreCase = true) ||
-        value.equals("sandbox", ignoreCase = true)
+    return value != null &&
+        (value.equals("production", ignoreCase = true) || value.equals("sandbox", ignoreCase = true))
 }
 
 internal fun parseEnvironment(contextBundle: Bundle?): MnxtEnvironment {

@@ -23,11 +23,10 @@ final class MonextPayment: NSObject {
 
         let environmentValue = context[MonextContextKeys.environment] as? String
         guard isValidEnvironmentValue(environmentValue) else {
-            reject(
-                MonextErrorCodes.invalidEnvironment,
-                "environment must be \"production\" or \"sandbox\", got \"\(environmentValue ?? "nil")\"",
-                nil
-            )
+            let message = environmentValue == nil
+                ? "environment is required and must be \"production\" or \"sandbox\""
+                : "environment must be \"production\" or \"sandbox\", got \"\(environmentValue!)\""
+            reject(MonextErrorCodes.invalidEnvironment, message, nil)
             return
         }
 

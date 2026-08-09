@@ -84,8 +84,8 @@ class MonextContextParsingTest {
     }
 
     @Test
-    fun `isValidEnvironment accepts a missing value`() {
-        assertEquals(true, isValidEnvironment(null))
+    fun `isValidEnvironment rejects a missing value`() {
+        assertEquals(false, isValidEnvironment(null))
     }
 
     @Test
