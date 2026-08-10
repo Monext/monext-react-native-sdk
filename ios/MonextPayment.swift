@@ -5,8 +5,8 @@ import UIKit
 import Monext
 import React
 
-@objc(MonextPayment)
-final class MonextPayment: NSObject {
+@objc(MonextPaymentSheetPresenter)
+final class MonextPaymentSheetPresenter: NSObject {
     private var isPresenting = false
     
     @objc
