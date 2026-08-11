@@ -94,6 +94,27 @@ describe('PaymentButton disabled state', () => {
 
     expect(findPressable(root).props.disabled).toBe(false);
   });
+
+  it('does not allow accessibilityState to override disabled or busy', () => {
+    let root!: ReactTestRenderer.ReactTestRenderer;
+    act(() => {
+      root = ReactTestRenderer.create(
+        <PaymentButton
+          context={context}
+          disabled={true}
+          accessibilityState={{ disabled: false, busy: false }}
+          onResult={jest.fn()}
+        >
+          Pay
+        </PaymentButton>
+      );
+    });
+
+    expect(findPressable(root).props.accessibilityState).toMatchObject({
+      disabled: true,
+      busy: false,
+    });
+  });
 });
 
 describe('PaymentButton in-flight state', () => {

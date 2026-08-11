@@ -94,13 +94,31 @@ describe('presentPaymentSheet delegation', () => {
     expect(resolved).toBe(result);
   });
 
-  it('propagates a native rejection unchanged', async () => {
-    const error = new Error('E_INVALID_ENVIRONMENT');
+  it('normalizes a native rejection into a MonextError', async () => {
+    const error = Object.assign(new Error('A payment sheet is already open'), {
+      code: 'E_PAYMENT_IN_PROGRESS',
+    });
     mockPresentPaymentSheet.mockRejectedValue(error);
 
-    await expect(presentPaymentSheet('token-123', context)).rejects.toBe(
-      error
-    );
+    const rejection = await presentPaymentSheet('token-123', context).catch((e) => e);
+
+    expect(rejection).toBeInstanceOf(MonextError);
+    expect(rejection).toMatchObject({
+      code: 'E_PAYMENT_IN_PROGRESS',
+      message: 'A payment sheet is already open',
+    });
+  });
+
+  it('maps an unknown native rejection to E_PAYMENT_SHEET', async () => {
+    mockPresentPaymentSheet.mockRejectedValue(new Error('native failure'));
+
+    const rejection = await presentPaymentSheet('token-123', context).catch((e) => e);
+
+    expect(rejection).toBeInstanceOf(MonextError);
+    expect(rejection).toMatchObject({
+      code: 'E_PAYMENT_SHEET',
+      message: 'native failure',
+    });
   });
 });
 

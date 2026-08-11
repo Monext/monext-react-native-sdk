@@ -8,7 +8,6 @@ import com.facebook.react.bridge.BaseActivityEventListener
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableMap
-import com.facebook.react.bridge.WritableNativeMap
 import com.facebook.react.module.annotations.ReactModule
 
 @ReactModule(name = MonextPaymentModule.NAME)
@@ -32,27 +31,25 @@ class MonextPaymentModule(
       val promise = pendingPromise ?: return
       pendingPromise = null
 
-      if (resultCode == Activity.RESULT_CANCELED) {
-        promise.resolve(
-          WritableNativeMap().apply {
-            putString("result", "dismissed")
-            putString("state", "paymentCanceled")
+      when (
+        val outcome = mapPaymentActivityResult(
+          resultCode = resultCode,
+          result = data?.getStringExtra(EXTRA_RESULT),
+          state = data?.getStringExtra(EXTRA_STATE),
+          errorMessage = data?.getStringExtra(EXTRA_ERROR)
+        )
+      ) {
+        is MonextPaymentActivityOutcome.Resolved -> promise.resolve(
+          Arguments.createMap().apply {
+            putString("result", outcome.result)
+            outcome.state?.let { putString("state", it) }
           }
         )
-        return
+        is MonextPaymentActivityOutcome.Rejected -> promise.reject(
+          MonextErrorCodes.PAYMENT_SHEET,
+          outcome.message
+        )
       }
-
-      if (resultCode != Activity.RESULT_OK) {
-        promise.reject(MonextErrorCodes.PAYMENT_SHEET, data?.getStringExtra(EXTRA_ERROR) ?: "Payment sheet failed")
-        return
-      }
-
-      promise.resolve(
-        WritableNativeMap().apply {
-          putString("result", data?.getStringExtra(EXTRA_RESULT) ?: "unknown")
-          data?.getStringExtra(EXTRA_STATE)?.let { putString("state", it) }
-        }
-      )
     }
   }
 
@@ -106,10 +103,36 @@ class MonextPaymentModule(
     // gets paused (and stops recomposing) almost immediately after this call. Deferring the
     // launch by a couple of frames gives React Native time to paint the caller's "presenting"
     // state (e.g. a loading label) before the host activity freezes.
-    activity.window.decorView.postDelayed(
-      { activity.startActivityForResult(intent, REQUEST_PAYMENT_SHEET) },
-      ACTIVITY_LAUNCH_DELAY_MS
-    )
+    val launchPaymentActivity = Runnable {
+      // The host Activity can be destroyed during the intentional launch delay.
+      // In that case no activity result will arrive, so settle the pending Promise here.
+      if (pendingPromise !== promise) {
+        return@Runnable
+      }
+
+      if (!canLaunchPaymentActivity(activity.isFinishing, activity.isDestroyed)) {
+        pendingPromise = null
+        promise.reject(MonextErrorCodes.NO_ACTIVITY, "Android Activity is no longer available")
+        return@Runnable
+      }
+
+      try {
+        activity.startActivityForResult(intent, REQUEST_PAYMENT_SHEET)
+      } catch (e: Exception) {
+        if (pendingPromise === promise) {
+          pendingPromise = null
+          val detail = e.message ?: e.javaClass.simpleName
+          promise.reject(MonextErrorCodes.PAYMENT_SHEET, "Unable to present payment sheet: $detail")
+        }
+      }
+    }
+
+    if (!activity.window.decorView.postDelayed(launchPaymentActivity, ACTIVITY_LAUNCH_DELAY_MS)) {
+      if (pendingPromise === promise) {
+        pendingPromise = null
+        promise.reject(MonextErrorCodes.PAYMENT_SHEET, "Unable to schedule payment sheet presentation")
+      }
+    }
   }
 
   companion object {

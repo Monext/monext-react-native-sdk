@@ -127,7 +127,7 @@ Before calling native, `presentPaymentSheet` validates `sessionToken` (trimmed, 
 | `disabled` | `boolean` | no | Forces the button inactive in addition to the `sessionToken` check. |
 | `testID` | `string` | no | Forwarded to the underlying `Pressable`. |
 | `accessibilityRole` | `AccessibilityRole` | no | Defaults to `'button'`. |
-| `accessibilityState` | `AccessibilityState` | no | Merged with `{ disabled, busy: isPresenting }`. |
+| `accessibilityState` | `AccessibilityState` | no | Merged with the button state; `disabled` and `busy` always reflect the actual presentation state. |
 | `accessibilityLabel` | `string` | no | Forwarded to the underlying `Pressable`. |
 | `accessibilityHint` | `string` | no | Forwarded to the underlying `Pressable`. |
 
@@ -228,7 +228,7 @@ All types are re-exported from the package entry point alongside `presentPayment
 
 ## Errors
 
-`presentPaymentSheet` rejects the returned Promise (instead of resolving) for programmer errors and unrecoverable native failures. Every rejection is a `MonextError` (also thrown by `PaymentButton`, which is a thin wrapper around `presentPaymentSheet`) exposing the same `{ code, message }` shape regardless of whether it originated in JS or natively — `code` is one of the exported `MonextErrorCodes`:
+`presentPaymentSheet` rejects the returned Promise (instead of resolving) for programmer errors and unrecoverable native failures. Every rejection is a `MonextError` (also passed to `PaymentButton`'s `onError`) exposing the same `{ code, message }` shape regardless of whether it originated in JS or natively. Unknown native failures are normalized to `E_PAYMENT_SHEET`; `code` is one of the exported `MonextErrorCodes`:
 
 | Code | Origin | Meaning |
 |---|---|---|
@@ -260,15 +260,15 @@ try {
 
 ## Development
 
-This repository has no standalone test suite for `src/`; JS-facing behavior is exercised through `example-app/`, a full React Native app that depends on this package via `file:..` and is the integration target for manual and automated testing:
+This repository includes Jest unit tests for the JS API and `PaymentButton`. The `example-app/`, which depends on this package via `file:..`, is the integration target for manual native testing:
 
 ```sh
 npm install         # installs deps and builds this package
 npm run typecheck   # tsc --noEmit against src/
+npm test            # unit tests for the JS API and PaymentButton
 npm run android     # runs example-app on Android
 npm run ios         # runs example-app on iOS (run `pod install` in example-app/ios first)
 npm --prefix example-app test
 ```
 
-For bridge or payment-flow changes, test both platforms manually through `example-app`, including cancellation and error paths, not just the happy path.
-
+The Android bridge also has JVM unit tests for context parsing, payment-result mapping, cancellation, native errors and the delayed-launch lifecycle guard. For bridge or payment-flow changes, test both platforms manually through `example-app`, including cancellation and error paths, not just the happy path.

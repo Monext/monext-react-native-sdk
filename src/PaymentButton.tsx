@@ -131,9 +131,9 @@ export function PaymentButton({
       accessibilityLabel={accessibilityLabel}
       accessibilityRole={accessibilityRole}
       accessibilityState={{
+        ...accessibilityState,
         disabled: isButtonDisabled,
         busy: isPresenting,
-        ...accessibilityState,
       }}
       disabled={isButtonDisabled}
       onPress={handlePress}
